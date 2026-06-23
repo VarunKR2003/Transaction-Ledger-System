@@ -11,10 +11,9 @@ const USERS = [
   { id: '6', label: 'User 6' },
 ];
 
-// Unique key generator
-let keyCounter = 0;
+// Unique key generator using cryptographically secure UUID v4
 function genKey(prefix = 'txn') {
-  return `${prefix}-${Date.now()}-${++keyCounter}`;
+  return `${prefix}-${self.crypto.randomUUID()}`;
 }
 
 function timestamp() {
@@ -78,13 +77,13 @@ export default function App() {
           `<strong>Transaction created</strong> for user ${activeUser} — amount: ${amount}, balance: ${data.summary.totalAmount}`
         );
       }
-      if (!keyLocked) {
-        setIdempotencyKey(genKey());
-      }
     } catch (err) {
       addLog('error', `<strong>Failed</strong> for user ${activeUser}: ${err.message}`);
     } finally {
       setSubmitting(false);
+      if (!keyLocked) {
+        setIdempotencyKey(genKey());
+      }
     }
   };
 
