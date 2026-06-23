@@ -19,6 +19,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -38,15 +39,9 @@ from app.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[int] = mapped_column(
+        Integer,
         primary_key=True,
-        default=uuid.uuid4,
-        server_default=text("gen_random_uuid()"),
-    )
-    # Client-facing identifier (e.g. "user_alice"). Unique, used in API paths.
-    user_id: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, index=True,
     )
     display_name: Mapped[str | None] = mapped_column(
         String(255), nullable=True,
@@ -107,14 +102,13 @@ class User(Base):
 class Transaction(Base):
     __tablename__ = "transactions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[int] = mapped_column(
+        BigInteger,
         primary_key=True,
-        default=uuid.uuid4,
-        server_default=text("gen_random_uuid()"),
+        autoincrement=True,
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    user_id: Mapped[int] = mapped_column(
+        Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

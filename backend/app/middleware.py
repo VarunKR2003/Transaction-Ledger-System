@@ -48,7 +48,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
         response.headers["X-Request-ID"] = rid
-
+        logger.info(f"response:{response}")
         logger.info(
             "request_end",
             extra={

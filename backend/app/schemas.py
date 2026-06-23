@@ -99,7 +99,7 @@ class TransactionRequest(BaseModel):
 class TransactionResponse(BaseModel):
     """Single transaction record in a response."""
 
-    id: UUID
+    id: int
     userId: str
     amount: str  # String representation of Decimal for JSON safety
     idempotencyKey: str

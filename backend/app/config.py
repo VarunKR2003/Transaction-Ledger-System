@@ -6,7 +6,8 @@ All configurable constants are surfaced here — no magic numbers buried in logi
 
 from decimal import Decimal
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from typing import Any
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -20,6 +21,16 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/transaction_ledger",
         description="Async SQLAlchemy database URL",
     )
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def enforce_asyncpg_scheme(cls, v: Any) -> str:
+        """Ensure the URL uses the asyncpg driver."""
+        if not isinstance(v, str):
+            return v
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     # ── Transaction Constraints ───────────────────────────────────────────
     MAX_TRANSACTION_AMOUNT: Decimal = Field(
@@ -76,7 +87,7 @@ class Settings(BaseSettings):
     )
 
     model_config = {
-        "env_file": ".env",
+        "env_file": (".env", "../.env", "backend/.env"),
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
     }
