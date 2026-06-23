@@ -25,9 +25,15 @@ from app.services.rate_limiter import rate_limiter
 
 
 # Use a separate test database URL
-TEST_DATABASE_URL = settings.DATABASE_URL.replace(
-    "/transaction_ledger", "/transaction_ledger_test"
-)
+# Dynamically append '_test' to whatever database name is defined in settings.DATABASE_URL
+db_url_parts = settings.DATABASE_URL.rsplit("/", 1)
+if len(db_url_parts) == 2 and db_url_parts[1]:
+    db_name_and_query = db_url_parts[1].split("?", 1)
+    db_name = db_name_and_query[0]
+    query = f"?{db_name_and_query[1]}" if len(db_name_and_query) == 2 else ""
+    TEST_DATABASE_URL = f"{db_url_parts[0]}/{db_name}_test{query}"
+else:
+    TEST_DATABASE_URL = settings.DATABASE_URL + "_test"
 
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
@@ -53,6 +59,22 @@ def event_loop():
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_test_db():
     """Create all tables before tests, drop after."""
+    # Ensure test database exists
+    main_engine = create_async_engine(
+        settings.DATABASE_URL,
+        isolation_level="AUTOCOMMIT",
+    )
+    db_name = TEST_DATABASE_URL.rsplit("/", 1)[1].split("?")[0]
+    async with main_engine.connect() as conn:
+        exists_result = await conn.execute(
+            text("SELECT 1 FROM pg_database WHERE datname = :dbname"),
+            {"dbname": db_name},
+        )
+        if not exists_result.scalar():
+            await conn.execute(text(f"CREATE DATABASE {db_name}"))
+    await main_engine.dispose()
+
+    # Create tables in test database
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
