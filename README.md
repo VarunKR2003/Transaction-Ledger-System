@@ -4,37 +4,36 @@ A high-concurrency, idempotent transaction ledger system built with **FastAPI** 
 
 This system handles financial transactions with strict guarantees on data consistency, idempotency, and concurrency, satisfying all requirements of the assignment.
 
-## 🚀 How to Run the Project
+---
 
-### Option 1: Docker (Recommended — One Command)
+## 🚀 Getting Started
 
-> **Prerequisites:** [Docker](https://www.docker.com/products/docker-desktop/) installed and running.
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running — that's it.
+
+### Run the Project
 
 ```bash
-git clone <repo-url>
-cd Transaction-Ledger-System
-docker compose up --build
+docker compose up -d
 ```
 
-That's it. This will automatically:
-1. Start a **PostgreSQL 16** database container
-2. Execute `db/init.sql` to create all tables, indexes, and seed 6 demo users
-3. Start the **FastAPI** backend on port `8000`
-4. Build and serve the **React** frontend via Nginx on port `3000`
+Open **http://localhost:3000** in your browser. Done.
 
-Open **http://localhost:3000** in your browser to use the application.
+> This single command automatically spins up the **PostgreSQL** database (pre-seeded with 6 demo users), the **FastAPI** backend, and the **React** frontend served via **Nginx** — all fully wired together and ready to use.
 
-To stop and clean up:
+#### Stopping the Project
+
 ```bash
-docker compose down           # Stop containers
-docker compose down -v        # Stop containers AND delete database volume
+docker compose down           # Stop all containers
+docker compose down -v        # Stop all containers AND wipe the database
 ```
 
 ---
 
 ## 🎯 Evaluation Guide (For Recruiters)
 
-Once the application is running via Docker, open **http://localhost:3000** to access the interactive testing dashboard. Here is how you can evaluate the core requirements:
+Once the application is running, open **http://localhost:3000** to access the interactive testing dashboard. Here is how you can evaluate the core requirements:
 
 ### 1. Test Data Consistency
 - Select **User 1**.
@@ -55,47 +54,6 @@ Once the application is running via Docker, open **http://localhost:3000** to ac
 ### 4. Test Fairness Ranking
 - Scroll down to the **Leaderboard** and click **Refresh**.
 - You will see users ranked by a composite score that mathematically blends Volume, Frequency (with logarithmic dampening to prevent spam), and Recency (exponential decay).
-
----
-
-### Option 2: Manual Setup (Local Development)
-
-#### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- PostgreSQL (running locally)
-
-#### 1. Database Setup
-Ensure PostgreSQL is running and create a database named `ledger_system`.
-Execute the SQL schema:
-```bash
-psql -U postgres -d ledger_system -f db/init.sql
-```
-
-#### 2. Backend Setup
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-Create a `.env` file in the `backend` directory:
-```env
-DATABASE_URL=postgresql+asyncpg://postgres:yourpassword@localhost:5432/ledger_system
-```
-Run the server:
-```bash
-uvicorn app.main:app --reload
-```
-The API will be available at `http://127.0.0.1:8000/api`.
-
-#### 3. Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
-The frontend dashboard will be available at `http://localhost:5173`.
 
 ---
 
@@ -185,3 +143,49 @@ Transaction-Ledger-System/
         ├── App.jsx             # Main dashboard with concurrency testing UI
         └── api.js              # API client module
 ```
+
+---
+
+## 🔧 Alternative: Running Without Docker (Manual Setup)
+
+<details>
+<summary>Click to expand manual setup instructions</summary>
+
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- PostgreSQL (running locally)
+
+### 1. Database Setup
+Ensure PostgreSQL is running and create a database named `ledger_system`.
+Execute the SQL schema:
+```bash
+psql -U postgres -d ledger_system -f db/init.sql
+```
+
+### 2. Backend Setup
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+Create a `.env` file in the `backend` directory:
+```env
+DATABASE_URL=postgresql+asyncpg://postgres:yourpassword@localhost:5432/ledger_system
+```
+Run the server:
+```bash
+uvicorn app.main:app --reload
+```
+The API will be available at `http://127.0.0.1:8000/api`.
+
+### 3. Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The frontend dashboard will be available at `http://localhost:5173`.
+
+</details>
