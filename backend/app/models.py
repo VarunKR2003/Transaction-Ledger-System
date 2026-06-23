@@ -30,7 +30,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -122,7 +122,9 @@ class Transaction(Base):
         String(255), unique=True, nullable=False,
     )
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, server_default=text("'completed'"),
+        postgresql.ENUM("completed", "flagged", "rejected", name="transaction_status", create_type=False),
+        nullable=False,
+        server_default=text("'completed'"),
     )
     # Computed once at insert time: abs(amount) >= MIN_AMOUNT_THRESHOLD
     counts_toward_ranking: Mapped[bool] = mapped_column(

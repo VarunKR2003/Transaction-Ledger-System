@@ -9,9 +9,7 @@ import logging
 import uuid
 from contextvars import ContextVar
 
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.requests import Request
-from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 # Context variable for request ID — accessible from any async code in the request
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
@@ -19,45 +17,72 @@ request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
 logger = logging.getLogger("transaction_ledger")
 
 
-class RequestIdMiddleware(BaseHTTPMiddleware):
+class RequestIdMiddleware:
     """
-    Assigns a unique request ID to every inbound request.
+    Pure ASGI middleware that assigns a unique request ID to every inbound request.
+
+    Uses raw ASGI instead of BaseHTTPMiddleware to avoid the known Starlette
+    bug where BaseHTTPMiddleware can consume/lose the request body on
+    cross-origin browser POST requests.
+
     - Checks for an existing X-Request-ID header (from load balancers).
     - Falls back to generating a new UUID4.
     - Stores it in a ContextVar for access in handlers/services.
     - Echoes it back in the response headers for client-side correlation.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
-        # Use existing request ID from upstream proxy, or generate one
-        rid = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+
+        # Extract existing request ID from headers, or generate one
+        headers = dict(scope.get("headers", []))
+        rid = headers.get(b"x-request-id", b"").decode() or str(uuid.uuid4())
         request_id_ctx.set(rid)
 
-        # Log the request (without full body — amounts/PII treated sensitively)
+        # Extract path and client info for logging
+        path = scope.get("path", "unknown")
+        client = scope.get("client")
+        client_ip = client[0] if client else "unknown"
+
         logger.info(
             "request_start",
             extra={
                 "request_id": rid,
-                "method": request.method,
-                "path": request.url.path,
-                "client_ip": request.client.host if request.client else "unknown",
+                "method": scope.get("method", ""),
+                "path": path,
+                "client_ip": client_ip,
             },
         )
 
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = rid
-        logger.info(f"response:{response}")
-        logger.info(
-            "request_end",
-            extra={
-                "request_id": rid,
-                "status_code": response.status_code,
-            },
-        )
+        # Intercept response to inject X-Request-ID header and log status
+        status_code = None
 
-        return response
+        async def send_wrapper(message):
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message.get("status", 0)
+                # Inject X-Request-ID into response headers
+                headers = list(message.get("headers", []))
+                headers.append((b"x-request-id", rid.encode()))
+                message = {**message, "headers": headers}
+            elif message["type"] == "http.response.body":
+                # Log on final body chunk
+                if not message.get("more_body", False):
+                    logger.info(
+                        "request_end",
+                        extra={
+                            "request_id": rid,
+                            "status_code": status_code,
+                        },
+                    )
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
 
 
 def setup_logging() -> None:
