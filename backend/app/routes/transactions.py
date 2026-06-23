@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.exceptions import RateLimitExceededError
+from app.exceptions import RateLimitExceededError, InvalidAmountException
 from app.middleware import request_id_ctx
 from app.schemas import (
     TransactionCreateResponse,
@@ -62,6 +62,12 @@ async def post_transaction(
             extra={"request_id": rid, "user_id": body.userId},
         )
         raise RateLimitExceededError(body.userId, retry_after)
+    if body.amount == 0:
+        logger.warning(
+            "transaction_zero_amount",
+            extra={"request_id": rid, "user_id": body.userId},
+        )
+        raise InvalidAmountException()
 
     # ── Create transaction ────────────────────────────────────────────
     logger.info(

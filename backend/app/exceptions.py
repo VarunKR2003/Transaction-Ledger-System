@@ -80,3 +80,15 @@ class NegativeAmountNotAllowedError(AppError):
             status_code=422,
             details=[{"field": "amount", "message": "Must be a positive number"}],
         )
+
+
+class InvalidAmountException(AppError):
+    """Raised when the transaction amount is strictly zero."""
+
+    def __init__(self):
+        super().__init__(
+            code="INVALID_AMOUNT",
+            message="Amount must not be zero. Zero transactions are treated as a no-op.",
+            status_code=422,
+            details=[{"field": "amount", "message": "Amount cannot be exactly zero"}],
+        )

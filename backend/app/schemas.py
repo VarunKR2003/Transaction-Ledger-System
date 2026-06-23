@@ -80,16 +80,7 @@ class TransactionRequest(BaseModel):
 
         return v
 
-    @field_validator("amount", mode="after")
-    @classmethod
-    def validate_amount_not_zero(cls, v: Decimal) -> Decimal:
-        """Zero amounts are treated as a no-op / likely client bug."""
-        if v == 0:
-            raise ValueError(
-                "Amount must not be zero. Zero transactions are treated as "
-                "a no-op and likely indicate a client bug."
-            )
-        return v
+
 
     @field_validator("userId", "idempotencyKey", mode="after")
     @classmethod
