@@ -26,6 +26,7 @@ export default function App() {
   const [activeUser, setActiveUser] = useState(USERS[0].id);
   const [amount, setAmount] = useState('100');
   const [idempotencyKey, setIdempotencyKey] = useState(() => genKey());
+  const [keyLocked, setKeyLocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [summary, setSummary] = useState(null);
@@ -77,7 +78,9 @@ export default function App() {
           `<strong>Transaction created</strong> for user ${activeUser} — amount: ${amount}, balance: ${data.summary.totalAmount}`
         );
       }
-      setIdempotencyKey(genKey());
+      if (!keyLocked) {
+        setIdempotencyKey(genKey());
+      }
     } catch (err) {
       addLog('error', `<strong>Failed</strong> for user ${activeUser}: ${err.message}`);
     } finally {
@@ -250,7 +253,17 @@ export default function App() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Idempotency Key</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 6 }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>Idempotency Key</label>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={keyLocked}
+                        onChange={(e) => setKeyLocked(e.target.checked)}
+                      />
+                      🔒 Lock key
+                    </label>
+                  </div>
                   <input
                     type="text"
                     className="form-input"
@@ -258,6 +271,8 @@ export default function App() {
                     onChange={(e) => setIdempotencyKey(e.target.value)}
                     placeholder="Auto-generated"
                     id="input-idempotency-key"
+                    readOnly={keyLocked}
+                    style={{ opacity: keyLocked ? 0.7 : 1 }}
                   />
                 </div>
               </div>
