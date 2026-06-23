@@ -43,9 +43,9 @@ CREATE INDEX idx_users_composite_score_data ON users(is_flagged, transaction_cou
 
 ## 2. Design Assumptions
 
-### Auto-Creation of Users
+### User Provisioning & Identity
 **Assumption:** In a real-world scenario, user accounts are created via an external Authentication/Identity service before transactions occur. 
-**Implementation:** For this assignment, we assume the `userId` provided by the frontend is trusted. To simplify testing, the backend will **auto-create** a user in the database the very first time a transaction is submitted for that `userId`.
+**Implementation:** The system relies on a pre-provisioned set of users. The database initialization script (`init.sql`) seeds the database with 6 test users via Docker. The backend explicitly raises a `404 User Not Found` error if a transaction is submitted for a user ID that does not exist in the database, strictly enforcing referential integrity.
 
 ### Denormalized Counters
 **Assumption:** Calculating a user's total balance dynamically by summing up all historical rows in the `transactions` table (`SUM(amount)`) becomes heavily bottlenecked at scale.
@@ -59,6 +59,10 @@ CREATE INDEX idx_users_composite_score_data ON users(is_flagged, transaction_cou
 **Assumption:** Python-level `asyncio` locks are insufficient because production environments typically run multiple worker processes (e.g., Gunicorn/Uvicorn with 4+ workers) or span across multiple physical servers.
 **Implementation:** Concurrency management is pushed entirely to the database engine. We rely on PostgreSQL `Row-Level Locking` and atomic increments (`total_amount = total_amount + :amount`). The database guarantees serialization of concurrent requests to the same user row, completely preventing "lost update" race conditions.
 
-### Idempotency Key Scope
+### Idempotency Key Scope & Generation
 **Assumption:** An idempotency key represents a single, unique user intent (e.g., clicking "Pay" once).
-**Implementation:** If a key is reused with the **exact same payload** (`userId` and `amount`), it is treated as a safe network retry (`200 OK`). If the payload is modified (e.g. someone tries to change the amount of a submitted transaction), it is treated as a malicious or conflicting request and raises a `409 Conflict`.
+**Implementation:** The frontend generates cryptographically secure `UUID v4` keys (`self.crypto.randomUUID()`) for every transaction to guarantee global uniqueness. If a key is reused with the **exact same payload** (`userId` and `amount`), the backend treats it as a safe network retry (`200 OK`). If the payload is modified (e.g. someone tries to change the amount of an already submitted transaction), it is treated as a malicious request and raises a `409 Conflict`.
+
+### Infrastructure & Deployment
+**Assumption:** Evaluators need a frictionless, unified way to run the stack without manually installing Python packages, Node modules, or configuring local databases.
+**Implementation:** The entire application is containerized using Docker Compose. A single command (`docker compose up --build`) orchestrates the PostgreSQL database (auto-seeded), the FastAPI backend, and an Nginx server serving the React frontend, ensuring perfect environment parity between development and evaluation.

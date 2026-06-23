@@ -32,6 +32,32 @@ docker compose down -v        # Stop containers AND delete database volume
 
 ---
 
+## 🎯 Evaluation Guide (For Recruiters)
+
+Once the application is running via Docker, open **http://localhost:3000** to access the interactive testing dashboard. Here is how you can evaluate the core requirements:
+
+### 1. Test Data Consistency
+- Select **User 1**.
+- Submit a transaction for `150.50`.
+- Click **Refresh** on the User Summary panel to see the `Total Amount` and `Transactions` count update instantly.
+
+### 2. Test Idempotency (Duplicate Prevention)
+- Check the **"🔒 Lock key"** box to freeze the Idempotency Key.
+- Click **Submit Transaction** multiple times.
+- Notice the Activity Log: The first request returns a success, but all subsequent clicks return a `warning` indicating an Idempotent Replay. The user's balance is only charged once.
+
+### 3. Test Concurrency (Race Conditions)
+- Scroll down to the **Concurrency Tester**.
+- Under *Same-user burst*, set Count to `20` and Amount to `50`.
+- Click **Fire 20 Transactions**.
+- The frontend will fire all 20 requests simultaneously. Because the backend uses **PostgreSQL Row-Level Locking**, you will see exactly 20 successes and the balance will mathematically perfectly increase by exactly `1000`, with zero lost updates.
+
+### 4. Test Fairness Ranking
+- Scroll down to the **Leaderboard** and click **Refresh**.
+- You will see users ranked by a composite score that mathematically blends Volume, Frequency (with logarithmic dampening to prevent spam), and Recency (exponential decay).
+
+---
+
 ### Option 2: Manual Setup (Local Development)
 
 #### Prerequisites

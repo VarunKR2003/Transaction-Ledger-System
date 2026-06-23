@@ -258,7 +258,10 @@ export default function App() {
                       <input 
                         type="checkbox" 
                         checked={keyLocked}
-                        onChange={(e) => setKeyLocked(e.target.checked)}
+                        onChange={(e) => {
+                          setKeyLocked(e.target.checked);
+                          setIdempotencyKey(genKey());
+                        }}
                       />
                       🔒 Lock key
                     </label>
