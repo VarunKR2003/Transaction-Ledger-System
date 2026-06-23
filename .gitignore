@@ -1,5 +1,26 @@
-.env
-backend/scratch_db.py
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+dist/
+build/
+myvenv/
+.pytest_cache/
+
+# Node
+node_modules/
+
+# Environment (local only — Docker uses env vars from docker-compose.yml)
+backend/.env
+
+# Scratch / temp
+backend/scratch_db.py
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

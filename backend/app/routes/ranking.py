@@ -94,10 +94,10 @@ async def get_ranking(
                 last_transaction_at,
                 created_at,
                 (
-                    :w_total * total_amount
-                    + :w_freq * ln(1 + valid_transaction_count)
-                    + :w_recency * exp(
-                        -:decay * EXTRACT(EPOCH FROM (
+                    CAST(:w_total AS FLOAT) * total_amount
+                    + CAST(:w_freq AS FLOAT) * ln(1 + valid_transaction_count)
+                    + CAST(:w_recency AS FLOAT) * exp(
+                        -CAST(:decay AS FLOAT) * EXTRACT(EPOCH FROM (
                             NOW() - COALESCE(last_transaction_at, created_at)
                         )) / 3600.0
                     )

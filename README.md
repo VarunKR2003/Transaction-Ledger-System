@@ -1,22 +1,52 @@
 # Transaction Ledger System
 
-A high-concurrency, idempotent transaction ledger system built with **FastAPI** (Python) and **React**.
+A high-concurrency, idempotent transaction ledger system built with **FastAPI** (Python), **PostgreSQL**, and **React**.
 
 This system handles financial transactions with strict guarantees on data consistency, idempotency, and concurrency, satisfying all requirements of the assignment.
 
 ## 🚀 How to Run the Project
 
-### Prerequisites
+### Option 1: Docker (Recommended — One Command)
+
+> **Prerequisites:** [Docker](https://www.docker.com/products/docker-desktop/) installed and running.
+
+```bash
+git clone <repo-url>
+cd Transaction-Ledger-System
+docker compose up --build
+```
+
+That's it. This will automatically:
+1. Start a **PostgreSQL 16** database container
+2. Execute `db/init.sql` to create all tables, indexes, and seed 6 demo users
+3. Start the **FastAPI** backend on port `8000`
+4. Build and serve the **React** frontend via Nginx on port `3000`
+
+Open **http://localhost:3000** in your browser to use the application.
+
+To stop and clean up:
+```bash
+docker compose down           # Stop containers
+docker compose down -v        # Stop containers AND delete database volume
+```
+
+---
+
+### Option 2: Manual Setup (Local Development)
+
+#### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- PostgreSQL (running locally or via Docker)
+- PostgreSQL (running locally)
 
-### 1. Database Setup
+#### 1. Database Setup
 Ensure PostgreSQL is running and create a database named `ledger_system`.
-Execute the SQL schema provided in `ASSUMPTIONS.md` to initialize the tables.
+Execute the SQL schema:
+```bash
+psql -U postgres -d ledger_system -f db/init.sql
+```
 
-### 2. Backend Setup
-Navigate to the `backend` directory:
+#### 2. Backend Setup
 ```bash
 cd backend
 python -m venv venv
@@ -33,8 +63,7 @@ uvicorn app.main:app --reload
 ```
 The API will be available at `http://127.0.0.1:8000/api`.
 
-### 3. Frontend Setup
-Navigate to the `frontend` directory:
+#### 3. Frontend Setup
 ```bash
 cd frontend
 npm install
@@ -46,7 +75,7 @@ The frontend dashboard will be available at `http://localhost:5173`.
 
 ## 📡 API Documentation
 
-### 1. `POST /transaction`
+### 1. `POST /api/transaction`
 Records a transaction for a user.
 - **Payload**: `{"userId": "1", "amount": "100.50", "idempotencyKey": "txn-uuid"}`
 - **Responses**:
@@ -56,13 +85,13 @@ Records a transaction for a user.
   - `422 Unprocessable Entity`: Invalid amount (e.g., zero, negative, or exceeding max limit).
   - `429 Too Many Requests`: Rate limit exceeded.
 
-### 2. `GET /summary/:userId`
+### 2. `GET /api/summary/:userId`
 Retrieves aggregated transaction data for a specific user.
 - **Responses**:
   - `200 OK`: Returns the user's current balance, transaction count, and status.
   - `404 Not Found`: User does not exist.
 
-### 3. `GET /ranking`
+### 3. `GET /api/ranking`
 Retrieves a paginated leaderboard of users.
 - **Query Params**: `?limit=20&offset=0`
 - **Response**: `200 OK` with a list of ranked users and their composite scores.
@@ -87,7 +116,46 @@ This forces the database engine to acquire a **Row-Level Lock**. If 10 concurren
 ### How Ranking is Calculated (Fairness Logic)
 The leaderboard is designed to prevent manipulation (e.g., spamming 10,000 $0.01 transactions to get to rank #1). 
 The composite score is calculated dynamically in SQL using this formula:
-`Score = (W_total * total_amount) + (W_freq * ln(1 + valid_count)) + (W_recency * exp(-λ * hours))`
+
+```
+Score = (W_total × total_amount) + (W_freq × ln(1 + valid_count)) + (W_recency × exp(-λ × hours))
+```
+
 1. **Total Volume:** Rewards raw financial balance.
-2. **Frequency (Log-Dampened):** Rewards consistent usage but uses a logarithmic curve (`ln`) so the value of each additional transaction drops sharply, preventing spam abuse. Transactions under a specific threshold do not count toward this metric.
-3. **Recency (Exponential Decay):** Rewards active users. Scores slowly "rot" or decay over time if the user becomes inactive.
+2. **Frequency (Log-Dampened):** Rewards consistent usage but uses a logarithmic curve (`ln`) so the value of each additional transaction drops sharply, preventing spam abuse. Transactions under a configurable minimum threshold do not count toward this metric.
+3. **Recency (Exponential Decay):** Rewards active users. Scores slowly "rot" or decay over time if the user becomes inactive, allowing active participants to rise in the rankings.
+
+---
+
+## 📁 Project Structure
+
+```
+Transaction-Ledger-System/
+├── docker-compose.yml          # One-command orchestration
+├── db/
+│   └── init.sql                # Schema + seed data (auto-executed by Docker)
+├── backend/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app/
+│       ├── main.py             # FastAPI entry point, middleware, error handlers
+│       ├── config.py           # All tunable parameters (weights, limits, thresholds)
+│       ├── database.py         # Async SQLAlchemy engine & session factory
+│       ├── models.py           # ORM models (User, Transaction)
+│       ├── schemas.py          # Pydantic request/response schemas
+│       ├── exceptions.py       # Centralized error hierarchy
+│       ├── middleware.py       # Request ID middleware (pure ASGI)
+│       ├── routes/
+│       │   ├── transactions.py # POST /transaction
+│       │   ├── summary.py      # GET /summary/:userId
+│       │   └── ranking.py      # GET /ranking
+│       └── services/
+│           ├── transaction_service.py  # Core business logic
+│           └── rate_limiter.py         # Sliding-window rate limiter
+└── frontend/
+    ├── Dockerfile
+    ├── nginx.conf              # Reverse proxy config for /api
+    └── src/
+        ├── App.jsx             # Main dashboard with concurrency testing UI
+        └── api.js              # API client module
+```
