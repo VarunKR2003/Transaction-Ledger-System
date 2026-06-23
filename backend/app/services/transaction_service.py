@@ -38,9 +38,7 @@ async def get_or_create_user(
     user = result.scalar_one_or_none()
 
     if user is None:
-        user = User(id=uid)
-        session.add(user)
-        await session.flush()  # Get the generated id
+        raise UserNotFoundError(user_id)
 
     return user
 
