@@ -31,13 +31,14 @@ async def get_or_create_user(
     Find existing user by client-facing user_id, or create one.
     Auto-creation on first transaction (documented in ASSUMPTIONS.md).
     """
+    uid = int(user_id)
     result = await session.execute(
-        select(User).where(User.user_id == user_id)
+        select(User).where(User.id == uid)
     )
     user = result.scalar_one_or_none()
 
     if user is None:
-        user = User(user_id=user_id)
+        user = User(id=uid)
         session.add(user)
         await session.flush()  # Get the generated id
 
@@ -52,8 +53,13 @@ async def get_user_summary(
     Raises UserNotFoundError if not found (never returns a zeroed summary
     for a nonexistent user — that hides bugs).
     """
+    try:
+        uid = int(user_id)
+    except ValueError:
+        raise UserNotFoundError(user_id)
+
     result = await session.execute(
-        select(User).where(User.user_id == user_id)
+        select(User).where(User.id == uid)
     )
     user = result.scalar_one_or_none()
 
@@ -110,7 +116,7 @@ async def create_transaction(
     # This is race-proof: the UNIQUE constraint on idempotency_key prevents
     # duplicates even under concurrent identical requests.
     now = datetime.now(timezone.utc)
-
+    logger.info(f"ATTEMPTING TRANSACTION: {user_id},{amount},{idempotency_key},{client_timestamp}")
     insert_result = await session.execute(
         text("""
             INSERT INTO transactions (
@@ -133,6 +139,7 @@ async def create_transaction(
             "client_timestamp": client_timestamp,
         },
     )
+    logger.info(f"TRANSACTION EXECUTED: {insert_result}")
 
     new_row = insert_result.fetchone()
 
@@ -188,7 +195,7 @@ async def create_transaction(
         existing_user = existing_user_result.scalar_one()
 
         if (
-            existing_user.user_id != user_id
+            existing_user.id != int(user_id)
             or Decimal(str(existing_txn.amount)) != amount
         ):
             # Different payload with same key → conflict, not a replay
