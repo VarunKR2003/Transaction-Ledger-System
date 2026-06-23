@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # ── Transaction Constraints ───────────────────────────────────────────
     MAX_TRANSACTION_AMOUNT: Decimal = Field(
-        default=Decimal("1000000.00"),
+        default=Decimal("10000.00"),
         description="Maximum allowed transaction amount (absolute value). "
                     "Acts as a fat-finger / abuse guard.",
     )
@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     # ── Rate Limiting ─────────────────────────────────────────────────────
     RATE_LIMIT_MAX_REQUESTS: int = Field(
-        default=10,
+        default=5,
         description="Maximum transactions per user within the sliding window.",
     )
     RATE_LIMIT_WINDOW_SECONDS: int = Field(
