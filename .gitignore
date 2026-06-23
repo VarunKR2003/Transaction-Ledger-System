@@ -1,2 +1,4 @@
 .env
 backend/scratch_db.py
+__pycache__
+backend/__pycache__
