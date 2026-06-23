@@ -92,11 +92,11 @@ async def post_transaction(
         response.status_code = 200
     else:
         response.status_code = 201
-
+    logger.info(f"RESPONSE CONTENTS:{user.id},{txn.amount}, {txn.status}, {txn.idempotency_key}")
     return TransactionCreateResponse(
         transaction=TransactionResponse(
             id=txn.id,
-            userId=user.user_id,
+            userId=str(user.id),
             amount=str(txn.amount),
             idempotencyKey=txn.idempotency_key,
             status=txn.status,
@@ -105,7 +105,7 @@ async def post_transaction(
             clientTimestamp=txn.client_timestamp,
         ),
         summary=SummaryResponse(
-            userId=user.user_id,
+            userId=str(user.id),
             displayName=user.display_name,
             totalAmount=str(user.total_amount),
             transactionCount=user.transaction_count,

@@ -35,7 +35,7 @@ async def get_summary(
     user = await get_user_summary(db, user_id)
 
     return SummaryResponse(
-        userId=user.user_id,
+        userId=str(user.id),
         displayName=user.display_name,
         totalAmount=str(user.total_amount),
         transactionCount=user.transaction_count,

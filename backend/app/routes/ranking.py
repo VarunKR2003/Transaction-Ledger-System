@@ -87,7 +87,7 @@ async def get_ranking(
     rows = await db.execute(
         text("""
             SELECT
-                user_id,
+                id AS user_id,
                 display_name,
                 total_amount,
                 valid_transaction_count,
@@ -142,7 +142,7 @@ async def get_ranking(
         rankings.append(
             RankingEntry(
                 rank=offset + idx + 1,
-                userId=row.user_id,
+                userId=str(row.user_id),
                 displayName=row.display_name,
                 compositeScore=round(float(row.composite_score), 4),
                 breakdown=ScoreBreakdown(
